@@ -13,10 +13,10 @@ import sys
 GPIO.setmode(GPIO.BCM)
 
 # set GPIO Pins
-pinTrigger_L = 17
-pinEcho_L = 20
-pinTrigger_M = 27
-pinEcho_M = 21
+pinTrigger_M = 17
+pinEcho_M = 20
+pinTrigger_L = 27
+pinEcho_L = 21
 pinTrigger_R = 22
 pinEcho_R = 16
 
@@ -26,7 +26,8 @@ def close(signal, frame):
         GPIO.cleanup()
         sys.exit(0)
 
-signal.signal(signal.SIGINT, close)
+ signal.signal(signal.SIGINT,close)
+
 
 # set GPIO input and output channels
 GPIO.setup(pinTrigger_L, GPIO.OUT)
@@ -42,7 +43,7 @@ def ultrasoon():
                 # set Trigger to HIGH
                 GPIO.output(pinTrigger_L, True)
                 # set Trigger after 0.01ms to LOW
-                time.sleep(0.00001)
+                time.sleep(0.0001)
                 GPIO.output(pinTrigger_L, False)
 
                 startTime_L = time.time()
@@ -62,7 +63,7 @@ def ultrasoon():
                # set Trigger to HIGH
                 GPIO.output(pinTrigger_M, True)
                 # set Trigger after 0.01ms to LOW
-                time.sleep(0.00001)
+                time.sleep(0.0001)
                 GPIO.output(pinTrigger_M, False)
 
                 startTime_M = time.time()
@@ -82,7 +83,7 @@ def ultrasoon():
                # set Trigger to HIGH
                 GPIO.output(pinTrigger_R, True)
                 # set Trigger after 0.01ms to LOW
-                time.sleep(0.00001)
+                time.sleep(0.0001)
                 GPIO.output(pinTrigger_R, False)
 
                 startTime_R = time.time()
