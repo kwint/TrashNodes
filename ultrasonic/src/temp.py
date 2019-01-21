@@ -1,138 +1,160 @@
 #!/usr/bin/env python
 import rospy
+from sensor_msgs.msg import Range
+from std_msgs.msg import Int16
 
-from std_msgs.msg import Int32
-from random import randint
+import tf
 
-import RPi.GPIO as GPIO
+import array
+import numpy as np
 import time
-import signal
-import sys
-
-# use Raspberry Pi board pin numbers
-GPIO.setmode(GPIO.BCM)
-
-# set GPIO Pins
-pinTrigger_M = 17
-pinEcho_M = 20
-pinTrigger_L = 27
-pinEcho_L = 21
-pinTrigger_R = 22
-pinEcho_R = 16
+import math
+import RPi.GPIO as GPIO
 
 
-def close(signal, frame):
-    print("\nTurning off ultrasonic distance detection...\n")
-    GPIO.cleanup()
-    sys.exit(0)
+
+# Class Measurement is from the hcsr04 sensor module for python.
+class Measurement(object):
+    '''Create a measurement using a HC-SR04 Ultrasonic Sensor connected to
+    the GPIO pins of a Raspberry Pi.
+
+    Metric values are used by default. For imperial values use
+    unit='imperial'
+    temperature=<Desired temperature in Fahrenheit>
+    '''
+
+    def __init__(self,
+                 trig_pin,
+                 echo_pin,
+                 temperature=20,
+                 round_to=1,
+                 gpio_mode=GPIO.BCM
+                 ):
+        self.trig_pin = trig_pin
+        self.echo_pin = echo_pin
+        self.temperature = temperature
+        self.round_to = round_to
+        self.gpio_mode = gpio_mode
+
+    def raw_distance(self, sample_size=11, sample_wait=0.1):
+        """Return an error corrected unrounded distance, in cm, of an object
+        adjusted for temperature in Celcius.  The distance calculated
+        is the median value of a sample of `sample_size` readings.
 
 
-signal.signal(signal.SIGINT, close)
+        Speed of readings is a result of two variables.  The sample_size
+        per reading and the sample_wait (interval between individual samples).
 
-# set GPIO input and output channels
-GPIO.setup(pinTrigger_L, GPIO.OUT)
-GPIO.setup(pinEcho_L, GPIO.IN)
-GPIO.setup(pinTrigger_M, GPIO.OUT)
-GPIO.setup(pinEcho_M, GPIO.IN)
-GPIO.setup(pinTrigger_R, GPIO.OUT)
-GPIO.setup(pinEcho_R, GPIO.IN)
+        Example: To use a sample size of 5 instead of 11 will increase the
+        speed of your reading but could increase variance in readings;
 
+        value = sensor.Measurement(trig_pin, echo_pin)
+        r = value.raw_distance(sample_size=5)
 
-def ultrasoon():
-    while True:
-        # Ultrasoon Links
-        # set Trigger to HIGH
-        GPIO.output(pinTrigger_L, True)
-        # set Trigger after 0.01ms to LOW
-        time.sleep(0.0001)
-        GPIO.output(pinTrigger_L, False)
+        Adjusting the interval between individual samples can also
+        increase the speed of the reading.  Increasing the speed will also
+        increase CPU usage.  Setting it too low will cause errors.  A default
+        of sample_wait=0.1 is a good balance between speed and minimizing
+        CPU usage.  It is also a safe setting that should not cause errors.
 
-        startTime_L = time.time()
-        stopTime_L = time.time()
+        e.g.
 
-        startTime = time.time()
-        # save start time
-        while 0 == GPIO.input(pinEcho_L):
-            startTime_L = time.time()
+        r = value.raw_distance(sample_wait=0.03)
+        """
+        speed_of_sound = 331.3 * math.sqrt(1 + (self.temperature / 273.15))
+        sample = []
+        # setup input/output pins
+        GPIO.setwarnings(False)
+        GPIO.setmode(self.gpio_mode)
+        GPIO.setup(self.trig_pin, GPIO.OUT)
+        GPIO.setup(self.echo_pin, GPIO.IN)
 
-        stopTime = time.time()
-        # save time of arrival
-        while 1 == GPIO.input(pinEcho_L):
-            stopTime_L = time.time()
-        # ==================================#
-        # Ultrasoon Midden
-        # set Trigger to HIGH
-        GPIO.output(pinTrigger_M, True)
-        # set Trigger after 0.01ms to LOW
-        time.sleep(0.0001)
-        GPIO.output(pinTrigger_M, False)
+        for distance_reading in range(sample_size):
+            GPIO.output(self.trig_pin, GPIO.LOW)
+            rospy.sleep(sample_wait)
+            GPIO.output(self.trig_pin, True)
+            rospy.sleep(0.00001)
+            GPIO.output(self.trig_pin, False)
+            echo_status_counter = 1
+            while GPIO.input(self.echo_pin) == 0:
+                sonar_signal_off = time.time()
+                echo_status_counter += 1
+                if echo_status_counter > 100000:
+                    #print('ja')
+                    break
+            while GPIO.input(self.echo_pin) == 1:
+                sonar_signal_on = time.time()
+            time_passed = sonar_signal_on - sonar_signal_off
+            distance_cm = time_passed * ((speed_of_sound * 100) / 2)
+            # print("distance_cm", distance_cm)
+            if 0 < distance_cm and distance_cm < 1100:
+                sample.append(distance_cm)
+            else:
+                sample.append(0)
+            # print("sample", sample)
+        sorted_sample = sorted(sample)
+        new_sorted_sample = filter(lambda a: a != 0, sorted_sample)
+        # print("filtered sorted sample", sorted_sample)
+        # new_sorted_sample = np.average(filtered_sample)
+        # Only cleanup the pins used to prevent clobbering
+        # any others in use by the program
+        GPIO.cleanup((self.trig_pin, self.echo_pin))
+        # print(sorted_sample)
+        # print(sorted_sample[len(sorted_sample)//2])
 
-        startTime_M = time.time()
-        stopTime_M = time.time()
+        return np.average(new_sorted_sample)
 
-        startTime_M = time.time()
-        # save start time
-        while 0 == GPIO.input(pinEcho_M):
-            startTime_M = time.time()
-
-        stopTime_M = time.time()
-        # save time of arrival
-        while 1 == GPIO.input(pinEcho_M):
-            stopTime_M = time.time()
-        # ==================================#
-        # Ultrasoon Midden
-        # set Trigger to HIGH
-        GPIO.output(pinTrigger_R, True)
-        # set Trigger after 0.01ms to LOW
-        time.sleep(0.0001)
-        GPIO.output(pinTrigger_R, False)
-
-        startTime_R = time.time()
-        stopTime_R = time.time()
-
-        startTime_R = time.time()
-        # save start time
-        while 0 == GPIO.input(pinEcho_R):
-            startTime_R = time.time()
-
-        stopTime_R = time.time()
-        # save time of arrival
-        while 1 == GPIO.input(pinEcho_R):
-            stopTime_R = time.time()
-        # ==================================#
-        # time difference between start and arrival
-        TimeElapsed_L = stopTime_L - startTime_L
-        TimeElapsed_M = stopTime_M - startTime_M
-        TimeElapsed_R = stopTime_R - startTime_R
-        # multiply with the sonic speed (34300 cm/s)
-        # and divide by 2, because there and back
-        distance_L = (TimeElapsed_L * 34300) / 2
-        distance_M = (TimeElapsed_M * 34300) / 2
-        distance_R = (TimeElapsed_R * 34300) / 2
-        distance_mean = (distance_L + distance_M + distance_R) / 3
-        dif12 = abs(distance_R - distance_M)
-        dif23 = abs(distance_M - distance_L)
-        dif13 = abs(distance_R - distance_L)
-        dif = []
-        dif.append(dif12, dif23, dif13)
-
-        print ("Distance Rechts: %.1f cm; Distance Midden: %.1f cm; Distance Rechts: %.1f cm" % (
-        distance_L, distance_M, distance_R))
-        print ("Mean Distance : %.1f cm" % distance_mean)
-        return distance_L, distance_M, distance_R, distance_mean
+    def distance_metric(self, median_reading):
+        '''Calculate the rounded metric distance, in cm's, from the sensor
+        to an object'''
+        return round(median_reading, self.round_to)
 
 
-if __name__ == '__main__':
-    rospy.init_node('ultrasoon_node')
-    pub = rospy.Publisher('sensoren', Int32, queue_size=10)
-    rate = rospy.Rate(10)
+# GPIO pins for ultrasonic sensors
+sonar_trig = [17, 21]
+sonar_echo = [20, 16]
 
-    while not rospy.is_shutdown():
-        dist_L, dist_M, dist_R, dist_mean = ultrasoon()
-        pub.publish(dist_L)
-        pub.publish(dist_M)
-        pub.publish(dist_R)
-        pub.publish(dist_mean)
+# Start ROS publisher and node
+rospy.init_node('sonic', anonymous=True)
+pub = rospy.Publisher('TrashHeight', Int16, queue_size=10)
+rate = rospy.Rate(100)  # 1hz
 
-rate.sleep()
+# init
+num_sensors = len(sonar_trig)
+sonic = []
+us = []
+Total_height = 200 # in cm
+
+# Make sensor objects
+for i in range(0, num_sensors):
+    sonic.append(Measurement(sonar_trig[i], sonar_echo[i]))
+
+rospy.loginfo(sonic)
+
+# Ros loop
+while not rospy.is_shutdown():
+
+    num_readings = 0
+    us = []
+    for i in range(0, num_sensors):
+        try:
+            # Read range from ultrasonic sensor, takes the mean of 3 readings
+            distance = sonic[i].distance_metric(sonic[i].raw_distance(sample_size=5, sample_wait=0.1))
+            print "distance sensor", i + 1, " :", distance
+            us.append(distance)
+        except SystemError:  # Set distance to 0 so that it gets ignored further on, but direction stays
+            rospy.logwarn("No return") # When echo doesn't recive anything
+            distance = 0
+        except UnboundLocalError:
+            rospy.logwarn("local variable 'sonar_signal_on' referenced before assignment") # Happens sometime...
+            distance = 0
+    average_dist = round(np.average(us), 2)
+    U_Capacity = round(average_dist/Total_height * 100, 1) # result is Used Capacity in %
+
+    print "Mean distance:", average_dist
+    print "Used Capacity:", 100-U_Capacity, "%"
+    print "=====================================:"
+    pub.publish(average_dist)
+
+    rate.sleep()
 
