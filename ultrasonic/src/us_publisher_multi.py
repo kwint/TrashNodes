@@ -8,6 +8,8 @@ import RPi.GPIO as GPIO
 import time
 import signal
 import sys
+import numpy as np
+
 
 # use Raspberry Pi board pin numbers
 GPIO.setmode(GPIO.BCM)
@@ -42,18 +44,16 @@ def ultrasoon():
                 # set Trigger to HIGH
                 GPIO.output(pinTrigger_L, True)
                 # set Trigger after 0.01ms to LOW
-                time.sleep(0.00001)
+                time.sleep(1)
                 GPIO.output(pinTrigger_L, False)
 
                 startTime_L = time.time()
                 stopTime_L = time.time()
 
-                startTime = time.time()
                 # save start time
                 while 0 == GPIO.input(pinEcho_L):
                         startTime_L= time.time()
                         
-                stopTime = time.time()
                 # save time of arrival
                 while 1 == GPIO.input(pinEcho_L):
                         stopTime_L = time.time()
@@ -62,38 +62,35 @@ def ultrasoon():
                # set Trigger to HIGH
                 GPIO.output(pinTrigger_M, True)
                 # set Trigger after 0.01ms to LOW
-                time.sleep(0.00001)
+                time.sleep(1)
                 GPIO.output(pinTrigger_M, False)
 
                 startTime_M = time.time()
                 stopTime_M = time.time()
 
-                startTime_M = time.time()
                 # save start time
                 while 0 == GPIO.input(pinEcho_M):
                         startTime_M = time.time()
-                        
-                stopTime_M = time.time()
+
                 # save time of arrival
                 while 1 == GPIO.input(pinEcho_M):
                         stopTime_M = time.time()
+
                 #==================================#
-                #Ultrasoon Midden
-               # set Trigger to HIGH
+                #Ultrasoon Rechts
+                # set Trigger to HIGH
                 GPIO.output(pinTrigger_R, True)
                 # set Trigger after 0.01ms to LOW
-                time.sleep(0.00001)
+                time.sleep(1)
                 GPIO.output(pinTrigger_R, False)
 
                 startTime_R = time.time()
                 stopTime_R = time.time()
 
-                startTime_R = time.time()
                 # save start time
                 while 0 == GPIO.input(pinEcho_R):
                         startTime_R = time.time()
                         
-                stopTime_R = time.time()
                 # save time of arrival
                 while 1 == GPIO.input(pinEcho_R):
                         stopTime_R = time.time()
@@ -107,18 +104,22 @@ def ultrasoon():
                 distance_L = (TimeElapsed_L * 34300) / 2
                 distance_M = (TimeElapsed_M * 34300) / 2
                 distance_R = (TimeElapsed_R * 34300) / 2
-                distance_mean = (distance_L+distance_M+distance_R)/3
-                print ("Distance Links: %.1f cm; Distance Midden: %.1f cm; Distance Rechts: %.1f cm" % (distance_L, distance_M, distance_R))
-                print ("Mean Distance : %.1f cm" % distance_mean)
+                distance_mean = 0
+                if (distance_L < 1100 and distance_M < 1100 and distance_R < 1100):
+                        distance_mean = (distance_L + distance_M + distance_R)/3
+                        print ("Distance Links: %.1f cm; Distance Midden: %.1f cm; Distance Rechts: %.1f cm" % (distance_L, distance_M, distance_R))
+                        print ("Mean Distance : %.1f cm" % distance_mean)
+                else:
+                        distance_L = 0; distance_M = 0; distance_R = 0
                 return distance_L, distance_M, distance_R, distance_mean
 
 if __name__=='__main__':
     rospy.init_node('ultrasoon_node')
     pub=rospy.Publisher('sensoren', Int32, queue_size=10)
-    rate= rospy.Rate(10)
+    rate= rospy.Rate(100)
 
     while not rospy.is_shutdown():
-        dist_L,dist_M, dist_R,dist_mean= ultrasoon()
+        dist_L,dist_M, dist_R,dist_mean = ultrasoon()
         pub.publish(dist_L )
         pub.publish(dist_M )
         pub.publish(dist_R)

@@ -8,13 +8,15 @@ import RPi.GPIO as GPIO
 import time
 import signal
 import sys
-
+import time
 # use Raspberry Pi board pin numbers
 GPIO.setmode(GPIO.BCM)
 
 # set GPIO Pins
-pinTrigger = 18
-pinEcho = 24
+#pinTrigger = 17
+#pinEcho = 20
+pinTrigger = 21
+pinEcho = 16
 
 def close(signal, frame):
         print("\nTurning off ultrasonic distance detection...\n")
@@ -26,7 +28,10 @@ signal.signal(signal.SIGINT, close)
 # set GPIO input and output channels
 GPIO.setup(pinTrigger, GPIO.OUT)
 GPIO.setup(pinEcho, GPIO.IN)
+
+
 def ultrasoon():
+
 
         while True:
                 # set Trigger to HIGH
@@ -34,17 +39,20 @@ def ultrasoon():
                 # set Trigger after 0.01ms to LOW
                 time.sleep(0.00001)
                 GPIO.output(pinTrigger, False)
-
+                lol = 1
+                counter = 1
                 startTime = time.time()
-                stopTime = time.time()
+                while GPIO.input(pinEcho) == 0:
+                    startTime = time.time()
+                    lol+=1
+                    if (lol > 10000):
+                        print('ja')
+                        break
+                    # print("1 keer")
 
-                startTime = time.time()
-                while not GPIO.input(pinEcho):
-        	        startTime = time.time()
-       	       	
                 stopTime = time.time()
-                # save time of arrival                                          
-                while GPIO.input(pinEcho):
+                # save time of arrival
+                while GPIO.input(pinEcho) == 1:
                         stopTime = time.time()
 
                 print("na time")
