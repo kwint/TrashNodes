@@ -108,8 +108,8 @@ class Measurement(object):
 
 
 # GPIO pins for ultrasonic sensors
-sonar_trig = [17, 21]
-sonar_echo = [20, 16]
+sonar_trig = [20, 21]
+sonar_echo = [16, 17]
 
 # Start ROS publisher and node
 rospy.init_node('sonic', anonymous=True)
@@ -146,7 +146,7 @@ while not rospy.is_shutdown():
             rospy.logwarn("local variable 'sonar_signal_on' referenced before assignment") # Happens sometime...
             distance = 0
     average_dist = round(np.average(us), 2)
-    U_Capacity = round(average_dist/Total_height * 100, 1) # result is Used Capacity in %
+
 
     if average_dist > 0:
         pub.publish(average_dist)
@@ -154,6 +154,7 @@ while not rospy.is_shutdown():
         average_dist = 0
         pub.publish(average_dist)
     print "Mean distance:", average_dist
+    U_Capacity = round(average_dist / Total_height * 100, 1)  # result is Used Capacity in %
     print "Used Capacity:", 100 - U_Capacity, "%"
     print "=====================================:"
 
