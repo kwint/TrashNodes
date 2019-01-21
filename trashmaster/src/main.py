@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import rospy
 import numpy
 
@@ -18,11 +19,11 @@ def eject():
 
 
 def capacity_check_height(data):
-    if data.data > 70:
+    if data.data < 15:
         rospy.loginfo("Full Capacity because of height")
         full()
     else:
-        pub_full.publish(True)
+        pub_full.publish(False)
 
     return
 
@@ -41,8 +42,8 @@ rospy.init_node("trash_master", anonymous=True)
 pub_full = rospy.Publisher("Full", Bool, queue_size=1)
 pub_status = rospy.Publisher("status", String, queue_size=1)
 
-rospy.Subscriber("TrashHeight", Int16, capacity_check_height, callback_args="height")
-rospy.Subscriber("TrashWeight", Int16, capacity_check_weight, callback_args="weight")
+rospy.Subscriber("TrashHeight", Int16, capacity_check_height)
+rospy.Subscriber("TrashWeight", Int16, capacity_check_weight)
 
 rs = rospy.Service('requestSeal', Trigger, seal)
 re = rospy.Service("requestEject", Trigger, eject)
@@ -52,3 +53,4 @@ rospy.wait_for_service("startEject")
 
 startSeal = rospy.ServiceProxy("startSeal", Trigger)
 startEject = rospy.ServiceProxy("startEject", Trigger)
+rospy.spin()

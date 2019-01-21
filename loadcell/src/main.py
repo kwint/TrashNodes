@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from hx711 import HX711  # import the class HX711
 import RPi.GPIO as GPIO  # import GPIO
 import rospy

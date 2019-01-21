@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import rospy
 import RPi.GPIO as GPIO  # import GPIO
 import time
