@@ -94,13 +94,10 @@ class Measurement(object):
             # print("sample", sample)
         sorted_sample = sorted(sample)
         new_sorted_sample = filter(lambda a: a != 0, sorted_sample)
-        # print("filtered sorted sample", sorted_sample)
-        # new_sorted_sample = np.average(filtered_sample)
         # Only cleanup the pins used to prevent clobbering
         # any others in use by the program
         GPIO.cleanup((self.trig_pin, self.echo_pin))
-        # print(sorted_sample)
-        # print(sorted_sample[len(sorted_sample)//2])
+
 
         return np.average(new_sorted_sample)
 
@@ -151,10 +148,14 @@ while not rospy.is_shutdown():
     average_dist = round(np.average(us), 2)
     U_Capacity = round(average_dist/Total_height * 100, 1) # result is Used Capacity in %
 
+    if average_dist > 0:
+        pub.publish(average_dist)
+    else:
+        average_dist = 0
+        pub.publish(average_dist)
     print "Mean distance:", average_dist
-    print "Used Capacity:", 100-U_Capacity, "%"
+    print "Used Capacity:", 100 - U_Capacity, "%"
     print "=====================================:"
-    pub.publish(average_dist)
 
     rate.sleep()
 
