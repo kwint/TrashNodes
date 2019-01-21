@@ -24,4 +24,3 @@ while not rospy.is_shutdown():
     pub.publish(detected)
     rate.sleep()
 
-
