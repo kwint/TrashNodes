@@ -120,7 +120,7 @@ rate = rospy.Rate(100)  # 1hz
 num_sensors = len(sonar_trig)
 sonic = []
 us = []
-Total_height = 200 # in cm
+Total_height = 75 # in cm
 
 # Make sensor objects
 for i in range(0, num_sensors):

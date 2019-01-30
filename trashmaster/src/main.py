@@ -3,23 +3,26 @@ import rospy
 import numpy
 
 from std_msgs.msg import Bool, Int16, String
-from std_srvs.srv import Trigger
+from std_srvs.srv import Trigger, TriggerResponse
+import RPi.GPIO as GPIO
 
-
-def seal():
-    if True:
+def seal(request):
+    if GPIO.input(23) == GPIO.HIGH:
         startSeal()
-    return
+        return TriggerResponse(success=True, message=" ")
+    else:
+        return TriggerResponse(success=False, message=" ")
 
 
-def eject():
+
+def eject(request):
     if True:
         startEject()
     return
 
 
 def capacity_check_height(data):
-    if data.data < 15:
+    if data.data < 20:
         rospy.loginfo("Full Capacity because of height")
         full()
     else:
@@ -36,6 +39,12 @@ def capacity_check_weight(data):
 def full():
     pub_status.publish("Full")
     pub_full.publish(True)
+
+
+GPIO.setmode(GPIO.BCM)
+uswitch_1_pin = 23
+GPIO.setup(uswitch_1_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
 
 rospy.init_node("trash_master", anonymous=True)
 

@@ -25,8 +25,8 @@ src_dir = "~/catkin_ws/src/rolly/src"
 rospy.init_node('GUI', anonymous=True)
 rospy.Subscriber("trashTrownIn", Bool, update_img, queue_size=1)
 pygame.init()
-WIDTH = 1920/2
-HEIGHT = 1080/2
+WIDTH = 1024
+HEIGHT = 768
 windowSurface = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 pygame.mixer.music.load(os.path.expanduser(src_dir + "/" + 'beep.ogg'))
 # pygame.display.toggle_fullscreen()
