@@ -1,46 +1,60 @@
 #!/usr/bin/env python
-from hx711 import HX711  # import the class HX711
-import RPi.GPIO as GPIO  # import GPIO
+from upm import pyupm_hx711 as hxlib
+import time
+import numpy as np
 import rospy
 from std_msgs.msg import Int16
 
+
+lc = hxlib.HX711(36, 38)
+
+tare_64 = 8878251.4
+tare_32 = 8457386.4
+
+scale_64 = 0.0044286979627989375
+scale_32 = 0.0130718954248366
+
+times = 10
+
 rospy.init_node("loadcells", anonymous=True)
-pub = rospy.Publisher("weight", Int16, queue_size=1)
-rate = rospy.Rate(0.5)
+pub = rospy.Publisher("TrashWeight", Int16, queue_size=1)
+# rate = rospy.Rate(0.25)
 
-hx = HX711(dout_pin=21, pd_sck_pin=20, gain_channel_A=64, select_channel='A')
-hx2 = HX711(dout_pin=23, pd_sck_pin=22, gain_channel_A=64, select_channel='A')
+def getAvg(lc, tare, scale, times):
+    data = np.array([])
+    for i in range(0, times):
+        data = np.append(data, lc.read())
 
-loadcells = [hx, hx2]
-ratios = [[2.8, 2.8],   # 1A, 1B
-          [2.8, 2.8]]   # 2A, 2B
+    # print("data", data)
+    data = data.mean()
 
-offsets = [[-85820, -25050],   # 1A, 1B
-          [2.8, 2.8]]   # 2A, 2B
+    # print("mean", data)
 
-for i, loadcell in enumerate(loadcells):
-    result = hx.reset()  # Before we start, reset the hx711 ( not necessary)
-    if result:  # you can check if the reset was successful
-        print('Ready to use')
-    else:
-        print('not ready')
-    loadcell.set_scale_ratio('A', scale_ratio=ratios[i][0])
-    loadcell.set_scale_ratio('B', scale_ratio=ratios[i][1])
+    data = data - tare
 
-    loadcell.set_offset(offsets[i][0], channel='A', gain_A=64)
-    loadcell.set_offset(offsets[i][1], channel='B')
+    weight = data * scale
+
+    return weight
 
 
-ratio = 2.8131269841269821
-hx.set_scale_ratio(scale_ratio=ratio)
+
 
 while not rospy.is_shutdown():
-    weight = 0
-    for loadcell in loadcells:
-        loadcell.select_channel("A")
-        weight = weight + loadcell.get_weight_mean(5)
-        loadcell.select_channel("B")
-        weight = weight + loadcell.get_weight_mean(5)
+    lc.setGain(64)
+    # time.sleep(1)
+    weight_64 = getAvg(lc, tare_64, scale_64, times)
+
+    lc.setGain(32)
+    # time.sleep(1)
+    weight_32 = getAvg(lc, tare_32, scale_32, times)
+
+    weight = weight_32 + weight_64
 
     pub.publish(weight)
-    rate.sleep()
+    rospy.logdebug(weight)
+
+
+    # rate.sleep()
+
+
+#end

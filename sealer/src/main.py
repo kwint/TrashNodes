@@ -1,73 +1,81 @@
 #!/usr/bin/env python
 import rospy
-import RPi.GPIO as GPIO  # import GPIO
-import time
 from std_msgs.msg import Int16, String
 from std_srvs.srv import Trigger, TriggerResponse
-GPIO.setmode(GPIO.BCM)
 
-motor_pin_open = 9 # open
-motor_pin_close = 11
-uswitch_1_pin = 24
-# uswitch_2_pin = 25
-sealer_pin = 3
-cutter_pin = 22
+import mraa
+import time
 
-seal_time = 25
+HEAT_ON = 0
+HEAT_OFF = 1
+
+sealer_pin = 18
+cutter_pin = 29
+
+seal_time = 60
 cut_time = 15
 move_time = 6
 
 rospy.init_node("sealer")
+
+# Export the GPIO pin for use
+sealer = mraa.Gpio(sealer_pin)
+cutter = mraa.Gpio(cutter_pin)
+
+time.sleep(0.1) # short wait is needed for mraa
+
+# Configure the pin direction and set pin to high directly, otherwise it would warm up
+sealer.dir(mraa.DIR_OUT)
+sealer.write(HEAT_OFF)
+cutter.dir(mraa.DIR_OUT)
+cutter.write(HEAT_OFF)
+
 pub_status = rospy.Publisher("status", String, queue_size=1)
 
-GPIO.setup(motor_pin_open, GPIO.OUT)
-GPIO.setup(motor_pin_close, GPIO.OUT)
-GPIO.setup(uswitch_1_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+rospy.wait_for_service("/seal_act/closeSeal")
+rospy.wait_for_service("/seal_act/openSeal")
 
-GPIO.setup(cutter_pin, GPIO.OUT)
-GPIO.setup(sealer_pin, GPIO.OUT)
-
-HIGH = GPIO.HIGH
-LOW = GPIO.LOW
-GPIO.output(motor_pin_open, LOW)
-GPIO.output(motor_pin_close, LOW)
+closeSeal = rospy.ServiceProxy("/seal_act/closeSeal", Trigger)
+openSeal = rospy.ServiceProxy("/seal_act/openSeal", Trigger)
 
 def seal_cut(request):
     rospy.loginfo("SEAL: Closing sealer")
 
     # Move sealers together
-    GPIO.output(motor_pin_open, HIGH)
-    while not GPIO.input(uswitch_1_pin) == HIGH:
-        time.sleep(0.01)
-    time.sleep(0.25)
-    GPIO.output(motor_pin_open, LOW)
+    closeSeal()
 
     time.sleep(1)
+
     # Sealing
     rospy.loginfo("SEAL: Sealing")
     start_time = time.time()
-    GPIO.output(sealer_pin, HIGH)
+    sealer.write(HEAT_ON)
     while time.time() - start_time < seal_time:
         time.sleep(0.01)
-    GPIO.output(sealer_pin, LOW)
+    sealer.write(HEAT_OFF)
 
     # Cutting
     rospy.loginfo("SEAL: Cutting")
     start_time = time.time()
-    GPIO.output(cutter_pin, HIGH)
+    cutter.write(HEAT_ON)
     while time.time() - start_time < cut_time:
         time.sleep(0.01)
-    GPIO.output(cutter_pin, LOW)
 
     # Move sealers away
-    start_time = time.time()
-    GPIO.output(motor_pin_close, HIGH)
-    while time.time() - start_time < move_time:
-        time.sleep(0.01)
-    GPIO.output(motor_pin_close, LOW)
+    openSeal()
+
+    # shut down heater after opening so plastic doesnt stick
+    cutter.write(HEAT_OFF)
+
     rospy.loginfo("SEAL: Sealing done")
     return TriggerResponse(success=True, message=" ")
 
 
 s = rospy.Service("startSeal", Trigger, seal_cut)
 rospy.spin()
+
+rospy.logwarn("Heat elements will warm up in 10 sec because seal node is terminated")
+time.sleep(10)
+
+
+

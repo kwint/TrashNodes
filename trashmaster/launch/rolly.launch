@@ -1,11 +1,12 @@
 <launch>
   <node name="Trashmaster" pkg="trashmaster" type="main.py" />
-  <node name="Ejecter" pkg="ejecter" type="main.py" />
-  <node name="Lightbridge" pkg="lightbridge" type="main.py" />
-  <!--<node name="Loadcell" pkg="loadcell" type="main.py" />-->
+  <!--<node name="Ejecter" pkg="ejecter" type="main.py" />-->
+  <!--<node name="Lightbridge" pkg="lightbridge" type="main.py" />-->
+  <node name="Loadcell" pkg="loadcell" type="main.py" />
   <!--<node name="Rolly" pkg="rolly" type="main.py" />-->
   <node name="Sealer" pkg="sealer" type="main.py" />
-  <node name="Ultrasonic" pkg="ultrasonic" type="UltrasoonHeight.py" />
+  <node name="seal_act" pkg="seal_act" type="seal_act" />
+
 
 
 </launch>
